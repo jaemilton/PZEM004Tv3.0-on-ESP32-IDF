@@ -1,0 +1,109 @@
+# put here your custom config value
+
+menu "Energy dual line meter"
+
+	config ESP_METER_ID
+		string "Identifier for the meter"
+		default "M1"
+		help
+			Identifier of meter. It will be used togheter with data posted on mqtt topics.
+
+	config DEBUG_ESP32
+	   	bool "ESP32 DEBUG"
+	   	default false
+		
+	choice LINE_NUMBER
+		prompt "Number of lines to me meansuared"
+		default ONE_LINE
+		help
+			Set the number of line that will be mensuared energy.
+
+		config ONE_LINE
+			bool "One line"
+			help
+				Select just one line to be mensuared.
+
+		config TWO_LINES
+			bool "Two lines"
+			help
+				Select two lines to be mensuared.
+	endchoice
+
+	config UART_LINE_1_TX_PIN
+		int "TX GPIO number for line 1"
+		default 4
+		help
+			Set the GPIO number used by TX UART for mensure line 1 (L1-N).
+
+	config UART_LINE_1_RX_PIN
+		int "RX GPIO number for line 1"
+		default 2
+		help
+			Set the GPIO number used by RX UART for mensure line 1 (L1-N).
+
+	if TWO_LINES
+		config UART_LINE_2_TX_PIN
+			int "TX GPIO number for line 2"
+			default 17
+			help
+				Set the GPIO number used by TX UART for mensure line 2 (L2-N).
+
+		config UART_LINE_2_RX_PIN
+			int "RX GPIO number for line 2"
+			default 16
+			help
+				Set the GPIO number used by RX UART for mensure line 2 (L2-N).
+	endif
+endmenu
+
+menu "Mqtt config"
+	config BROKER_URI
+        string "Broker URL"
+        default "mqtts://mqtt-server.rede.jai:8883"
+        help
+            URL of an mqtt broker which this example connects to.
+
+    config BROKER_CERTIFICATE_OVERRIDE
+        string "Broker certificate override"
+        default ""
+        help
+            Please leave empty if broker certificate included from a textfile; otherwise fill in a base64 part of PEM
+            format certificate
+
+    config BROKER_CERTIFICATE_OVERRIDDEN
+        bool
+        default y if BROKER_CERTIFICATE_OVERRIDE != ""
+        
+    config BROKER_L1_TOPIC_NAME
+    	string "MQTT Topic name for post data from line 1"
+    	default "L1"
+    	help
+    		Part of mqtt topic name that will where data from line 1 will be posted. 
+    		The topic will be creates as /ROTE/L1_TOPIC_NAME
+    if TWO_LINES	
+		config BROKER_L2_TOPIC_NAME
+	    	string "MQTT Topic name for post data from line 2"
+	    	default "L2"
+	    	help
+	    		Part of mqtt topic name that will where data from line 2 will be posted. 
+	    		The topic will be creates as /ROTE/L2_TOPIC_NAME
+	endif 	
+endmenu
+
+
+menu "Wifi config"
+	
+	config ESP_WIFI_SSID
+	    string "WiFi SSID"
+	    default "REDE_JAI"
+	    help
+		SSID (network name) for the example to connect to.
+	
+	config ESP_WIFI_PASSWORD
+	    string "WiFi Password"
+	    default "#Cristo2000#"
+	    help
+			WiFi password (WPA or WPA2) for the example to use.
+	
+endmenu
+
