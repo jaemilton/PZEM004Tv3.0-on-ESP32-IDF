@@ -34,6 +34,7 @@ static const char *TAG_MQTT = "mqtts";
 static const char *TAG_WIFI = "Wifi";
 static const char *TAG_MAIN = "main";
 static const char *TAG_PZEM004T = "pzem004t";
+static const char *TAG_SNTP = "sntp";
 
 /* The event group allows multiple bits for each event,
    but we only care about one event - are we connected
@@ -43,5 +44,7 @@ EventGroupHandle_t get_event_group();
 TickType_t get_tick_type_for_milliseconds(uint32_t milliseconds);
 bool esp_wait_for_wifi_connection(const TickType_t xTicksToWait = portMAX_DELAY);
 bool esp_wait_for_mqtt_connection(const TickType_t xTicksToWait = portMAX_DELAY);
+EventBits_t esp_set_bits(const EventBits_t uxBitsToClear);
+EventBits_t esp_clear_bits(const EventBits_t uxBitsToClear);
 
 #endif // TASK_SYNC_H

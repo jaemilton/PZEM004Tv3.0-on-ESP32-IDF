@@ -29,24 +29,28 @@ int mqtt_send_message(const char* topicName, const char* message)
 
 static esp_err_t mqtt_event_handler_cb(void* args, esp_mqtt_event_handle_t event)
 {
-	EventGroupHandle_t s_event_group = get_event_group();
-    esp_mqtt_client_handle_t client = event->client;
+	esp_mqtt_client_handle_t client = event->client;
     int msg_id;
     // your_context_t *context = event->context;
     switch (event->event_id) {
         case MQTT_EVENT_CONNECTED:
-        	xEventGroupSetBits(s_event_group, MQTT_CONNECTED_BIT);
-            ESP_LOGI(TAG_MQTT, "MQTT_EVENT_CONNECTED");
+        	esp_set_bits(MQTT_CONNECTED_BIT);
+        	ESP_LOGI(TAG_MQTT, "MQTT_EVENT_CONNECTED");
             msg_id = esp_mqtt_client_subscribe(client, "/topic/delaytime", 0);
             ESP_LOGI(TAG_MQTT, "sent subscribe successful, msg_id=%d", msg_id);
 
             	break;
         case MQTT_EVENT_DISCONNECTED:
         	//Try to reconnect on case of disconnection
-        	esp_mqtt_client_start(s_mqtt_client);
-        	xEventGroupClearBits(s_event_group, MQTT_CONNECTED_BIT);
-            ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DISCONNECTED");
-            break;
+        	esp_clear_bits(MQTT_CONNECTED_BIT);
+        	ESP_LOGI(TAG_MQTT, "MQTT_EVENT_DISCONNECTED");
+        	ESP_ERROR_CHECK(esp_mqtt_client_destroy(client));
+//        	ESP_ERROR_CHECK(esp_mqtt_client_reconnect(s_mqtt_client));
+
+//        	s_mqtt_client = NULL;
+        	//Try to restart mqtt client again
+        	mqtt_app_start();
+        	break;
 
         case MQTT_EVENT_SUBSCRIBED:
             ESP_LOGI(TAG_MQTT, "MQTT_EVENT_SUBSCRIBED, msg_id=%d", event->msg_id);
@@ -78,6 +82,9 @@ static esp_err_t mqtt_event_handler_cb(void* args, esp_mqtt_event_handle_t event
                 ESP_LOGW(TAG_MQTT, "Unknown error type: 0x%x", event->error_handle->error_type);
             }
             break;
+        case MQTT_EVENT_BEFORE_CONNECT:
+        	ESP_LOGI(TAG_MQTT, "MQTT_EVENT_BEFORE_CONNECT");
+			break;
         default:
             ESP_LOGI(TAG_MQTT, "Other event id:%d", event->event_id);
             break;
@@ -100,7 +107,6 @@ void mqtt_app_start()
 				.cert_pem = (const char *)mqtt_eclipse_org_pem_start
 			};
 
-		//ESP_LOGI(TAG_MQTT, "Server: %s, Cert: %s", mqtt_cfg.uri, mqtt_cfg.cert_pem);
 		ESP_LOGI(TAG_MQTT, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
 		s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
 		ESP_ERROR_CHECK(esp_mqtt_client_register_event(s_mqtt_client, MQTT_EVENT_ERROR, mqtt_event_handler, NULL));

@@ -25,11 +25,11 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     	xTaskCreate(smartconfig_example_task, "smartconfig_example_task", 4096, NULL, 3, arg);
 #endif
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        esp_clear_bits(WIFI_CONNECTED_BIT | MQTT_CONNECTED_BIT);
     	ESP_LOGI(TAG_WIFI, "Disconnected");
         esp_wifi_connect();
-        xEventGroupClearBits(s_event_group, WIFI_CONNECTED_BIT);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
-    	xEventGroupSetBits(s_event_group, WIFI_CONNECTED_BIT);
+    	esp_set_bits(WIFI_CONNECTED_BIT);
     	ip_event_got_ip_t *evt = (ip_event_got_ip_t *)event_data;
 
     	char ip[16] = {0};
@@ -71,23 +71,20 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_ERROR_CHECK( esp_wifi_connect() );
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
         xEventGroupSetBits(s_event_group, ESPTOUCH_DONE_BIT);
+        esp_set_bits(ESPTOUCH_DONE_BIT);
 #endif
     }
 }
+
+
 #ifdef CONFIG_USE_WIFI_SMARTCONFIG
 static void smartconfig_example_task(void * parm)
 {
-	EventGroupHandle_t *s_event_group = (EventGroupHandle_t *)arg;
-    EventBits_t uxBits;
-    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
+	ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK( esp_smartconfig_start(&cfg) );
     while (1) {
-        uxBits = xEventGroupWaitBits(*s_event_group, WIFI_CONNECTED_BIT | ESPTOUCH_DONE_BIT, true, false, portMAX_DELAY);
-        if(uxBits & WIFI_CONNECTED_BIT) {
-            ESP_LOGI(TAG_WIFI, "WiFi Connected to ap");
-        }
-        if(uxBits & ESPTOUCH_DONE_BIT) {
+        if(esp_wait_for_wifi_connection()) {
             ESP_LOGI(TAG_WIFI, "smartconfig over");
             esp_smartconfig_stop();
             vTaskDelete(NULL);

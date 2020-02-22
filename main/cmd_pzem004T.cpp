@@ -6,6 +6,7 @@
 #include "tasks_sync.h"
 #include "cmd_mqtt_client.h"
 #include "cmd_pzem004T.h"
+#include "cmd_sntp_client.h"
 
 
 static uint8_t _contator_task = 0;
@@ -21,6 +22,7 @@ void start_task_uart(const task_data_t * task_data);
 string get_meansure_mqtt_message(const task_data_t * task_data, const power_meansuare_t* mensures);
 void meansure_pzem004tv3_task(void *arg);
 void print_meansures(const task_data_t * task_data, const power_meansuare_t * mensures);
+char* get_topic_name(char* meter_id,  char* l_topic_name);
 
 void pzem004T_start()
 {
@@ -30,9 +32,15 @@ void pzem004T_start()
 		set_pzem004T_update_delay(2000);
 
 		ESP_LOGI(TAG_PZEM004T, "mqtt Connected");
+
 		task_data_1 = {
-			.task_name=	"L1",
-			.mqtt_topic_name = CONFIG_BROKER_L1_TOPIC_NAME,
+			.task_name =	"L1",
+			.mqtt_topic_name =
+					get_topic_name
+					(
+						CONFIG_ESP_METER_ID,
+						CONFIG_BROKER_L1_TOPIC_NAME
+					),
 			.uart_data = {
 				.uart_port = UART_NUM_1,
 				.tx_io_num = CONFIG_UART_LINE_1_TX_PIN,
@@ -44,7 +52,12 @@ void pzem004T_start()
 		  #ifdef CONFIG_TWO_LINES
 		  task_data_2 = {
 			.task_name = "L2",
-			.mqtt_topic_name = CONFIG_BROKER_L1_TOPIC_NAME,
+			.mqtt_topic_name =
+					get_topic_name
+					(
+						(const char*)CONFIG_ESP_METER_ID,
+						(const char*)CONFIG_BROKER_L2_TOPIC_NAME
+					),
 			.uart_data = {
 				.uart_port = UART_NUM_2,
 				.tx_io_num = CONFIG_UART_LINE_2_TX_PIN,
@@ -55,6 +68,9 @@ void pzem004T_start()
 		  #endif
 	}
 }
+
+
+
 
 #define STACK_SIZE 1024 *4
 
@@ -75,13 +91,19 @@ void start_task_uart(const task_data_t * task_data)
 	}
 }
 
-
+char* get_topic_name( char* meter_id,  char* l_topic_name)
+{
+	char* topic_name;
+	topic_name = (char*)malloc(strlen(meter_id) + strlen(l_topic_name) + 1); /* make space for the new string (should check the return value ...) */
+	strcpy(topic_name, meter_id); /* copy name into the new var */
+	strcat(topic_name, l_topic_name); /* add the extension */
+	return topic_name;
+}
 string get_meansure_mqtt_message(const task_data_t * task_data, const power_meansuare_t* mensures)
 {
 	string message_mqtt;
 	std::stringstream messagestream;
-	messagestream << CONFIG_ESP_METER_ID << ";";
-	messagestream << task_data->task_name << ";";
+	messagestream << get_time_str() << ";";
 	messagestream << mensures->voltage << ";";
 	messagestream << mensures->current  << ";";
 	messagestream << mensures->power  << ";";
@@ -129,12 +151,15 @@ void meansure_pzem004tv3_task(void *arg)
     	}
 
     	//Ensure that mqtt is connected
-		if(pzem004_ajustado && esp_wait_for_mqtt_connection()) {
+		if(pzem004_ajustado &&
+				esp_wait_for_mqtt_connection(get_tick_type_for_milliseconds(1000))
+		) {
 			power_meansuare_t * mensures = pzem.meansures();
 			string meansuresMqttMessage = get_meansure_mqtt_message(task_data, mensures);
 			mqtt_send_message(task_data->mqtt_topic_name, meansuresMqttMessage.c_str());
 #ifdef CONFIG_DEBUG_ESP32
-			print_meansures(task_data, mensures);
+			//print_meansures(task_data, mensures);
+			ESP_LOGI(TAG_PZEM004T, "%s >> %s", task_data->task_name, meansuresMqttMessage.c_str());
 #endif
 			vTaskDelay( s_xDelayMeansurePzem004T );
 		}

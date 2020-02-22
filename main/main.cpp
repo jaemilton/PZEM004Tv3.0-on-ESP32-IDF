@@ -11,6 +11,7 @@
 #include "cmd_wifi_smartconfig.h"
 #include "cmd_mqtt_client.h"
 #include "cmd_pzem004T.h"
+#include "cmd_sntp_client.h"
 
 
 const char * MAIN = "app_main";
@@ -29,10 +30,13 @@ extern "C" void app_main(void)
 	ESP_LOGI(TAG_MAIN, "task_sync started");
 	wifi_start();
 	ESP_LOGI(TAG_MAIN, "wifi started");
+	obtain_time();
+	ESP_LOGI(TAG_MAIN, "sntp started");
 	mqtt_app_start();
 	ESP_LOGI(TAG_MAIN, "mqtt started");
 	pzem004T_start();
 	ESP_LOGI(TAG_MAIN, "pzem004T started");
+
 }
 
 
