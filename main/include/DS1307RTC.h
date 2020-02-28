@@ -8,6 +8,15 @@
 #include "sdkconfig.h"
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include <time.h>
+#define TM_NBR_FIELDS 7
+
+
+static esp_err_t beginTransmission(uint16_t address);
+static esp_err_t endTransmission(uint16_t address, i2c_cmd_handle_t cmd);
+static esp_err_t i2c_master_init(void);
+static esp_err_t i2c_master_read_slave(i2c_port_t i2c_num, uint8_t *data_rd, size_t size);
+static esp_err_t i2c_master_write_slave(i2c_port_t i2c_num, uint8_t *data_wr, size_t size);
+
 #else
 #include <TimeLib.h>
 #endif
