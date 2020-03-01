@@ -280,14 +280,23 @@ unsigned char DS1307RTC::isRunning()
 
 #if CONFIG_IDF_TARGET_ESP32
   endTransmission(DS1307_CTRL_ID, cmd);
+
+  //ESP_ERROR_CHECK(i2c_master_read_byte(cmd, 0x00, ACK_CHECK_EN)); // reset register pointer
+
+  uint8_t data_rd[1];
+  ESP_ERROR_CHECK(i2c_master_read_slave(I2C_MASTER_NUM, data_rd, 1));
+
 #else
   Wire.endTransmission();
-#endif
 
   // Just fetch the seconds register and check the top bit
-  Wire.requestFrom(DS1307_CTRL_ID, 1);
+   Wire.requestFrom(DS1307_CTRL_ID, 1);
+#endif
+
 #if ARDUINO >= 100
   return !(Wire.read() & 0x80);
+#elif CONFIG_IDF_TARGET_ESP32
+  return !(data_rd[0] & 0x80);
 #else
   return !(Wire.receive() & 0x80);
 #endif  
@@ -297,30 +306,68 @@ void DS1307RTC::setCalibration(char calValue)
 {
   unsigned char calReg = abs(calValue) & 0x1f;
   if (calValue >= 0) calReg |= 0x20; // S bit is positive to speed up the clock
+#if CONFIG_IDF_TARGET_ESP32
+  beginTransmission(DS1307_CTRL_ID);
+#else
   Wire.beginTransmission(DS1307_CTRL_ID);
+#endif
+
 #if ARDUINO >= 100  
   Wire.write((uint8_t)0x07); // Point to calibration register
   Wire.write(calReg);
+#elif CONFIG_IDF_TARGET_ESP32
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, 0x07, ACK_CHECK_EN)); // Point to calibration register
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, calReg, ACK_CHECK_EN));
+
 #else  
   Wire.send(0x07); // Point to calibration register
   Wire.send(calReg);
 #endif
+
+#if CONFIG_IDF_TARGET_ESP32
+  endTransmission(DS1307_CTRL_ID, cmd);
+#else
   Wire.endTransmission();  
+#endif
 }
 
 char DS1307RTC::getCalibration()
 {
+#if CONFIG_IDF_TARGET_ESP32
+	beginTransmission(DS1307_CTRL_ID);
+#else
   Wire.beginTransmission(DS1307_CTRL_ID);
+#endif
+
 #if ARDUINO >= 100  
   Wire.write((uint8_t)0x07); 
+#elif CONFIG_IDF_TARGET_ESP32
+  i2c_cmd_handle_t cmd = i2c_cmd_link_create();
+  i2c_master_start(cmd);
+  ESP_ERROR_CHECK(i2c_master_write_byte(cmd, 0x07, ACK_CHECK_EN)); // Point to calibration register
 #else
   Wire.send(0x07);
 #endif  
-  Wire.endTransmission();
 
+#if CONFIG_IDF_TARGET_ESP32
+  endTransmission(DS1307_CTRL_ID, cmd);
+#else
+  Wire.endTransmission();
+#endif
+
+#if CONFIG_IDF_TARGET_ESP32
+  uint8_t data_rd[1];
+  ESP_ERROR_CHECK(i2c_master_read_slave(I2C_MASTER_NUM, data_rd, 1));
+#else
   Wire.requestFrom(DS1307_CTRL_ID, 1);
+#endif
+
 #if ARDUINO >= 100
   unsigned char calReg = Wire.read();
+#elif CONFIG_IDF_TARGET_ESP32
+  unsigned char calReg = data_rd[0];
 #else
   unsigned char calReg = Wire.receive();
 #endif
