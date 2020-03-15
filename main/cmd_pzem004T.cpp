@@ -72,7 +72,7 @@ void pzem004T_start()
 
 
 
-#define STACK_SIZE 1024 *4
+
 
 void start_task_uart(const task_data_t * task_data)
 {

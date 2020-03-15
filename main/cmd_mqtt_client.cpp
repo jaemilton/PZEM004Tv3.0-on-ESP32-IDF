@@ -5,8 +5,8 @@
 #include "cmd_mqtt_client.h"
 #include "cmd_pzem004T.h"
 
-static esp_mqtt_client_handle_t s_mqtt_client = NULL;
 
+//static esp_mqtt_client_handle_t s_mqtt_client_handler = NULL;
 
 #if CONFIG_BROKER_CERTIFICATE_OVERRIDDEN == 1
 static const uint8_t mqtt_eclipse_org_pem_start[]  = "-----BEGIN CERTIFICATE-----\n" CONFIG_BROKER_CERTIFICATE_OVERRIDE "\n-----END CERTIFICATE-----";
@@ -19,7 +19,9 @@ int mqtt_send_message(const char* topicName, const char* message)
 {
 	int msg_id = 0;
 	if(esp_wait_for_wifi_connection()) {
-		msg_id = esp_mqtt_client_publish(s_mqtt_client, topicName, message, strlen(message), 0, 0);
+		//msg_id = esp_mqtt_client_publish(s_mqtt_client, topicName, message, strlen(message), 0, 0);
+		msg_id = esp_mqtt_client_publish(get_mqtt_handler(), topicName, message, strlen(message), 0, 0);
+
 		ESP_LOGI(TAG_MQTT, "binary sent with msg_id=%d", msg_id);
 	}
     return msg_id;
@@ -108,7 +110,9 @@ void mqtt_app_start()
 			};
 
 		ESP_LOGI(TAG_MQTT, "[APP] Free memory: %d bytes", esp_get_free_heap_size());
-		s_mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+		//s_mqtt_client =  esp_mqtt_client_init(&mqtt_cfg);
+		esp_mqtt_client_handle_t s_mqtt_client = register_mqtt_handler(mqtt_cfg);
+
 		ESP_ERROR_CHECK(esp_mqtt_client_register_event(s_mqtt_client, MQTT_EVENT_ERROR, mqtt_event_handler, NULL));
 		ESP_ERROR_CHECK(esp_mqtt_client_register_event(s_mqtt_client, MQTT_EVENT_CONNECTED, mqtt_event_handler, NULL));
 		ESP_ERROR_CHECK(esp_mqtt_client_register_event(s_mqtt_client, MQTT_EVENT_DISCONNECTED, mqtt_event_handler, NULL));
